@@ -2,6 +2,7 @@
 // Created by seba on 10.04.19.
 //
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <memory>
@@ -13,12 +14,14 @@ namespace latinSquare
 namespace latin
 {
 
+bool LatingSquareAlgorithm::found = false;
+
 LatingSquareAlgorithm::LatingSquareAlgorithm()
 {
 	helper_ = std::make_shared<AlgorithmHelper>();
 }
 
-bool LatingSquareAlgorithm::isLatinSquareValid(int index, src::latin_square latinSquare, int sideOfWholeSquare)
+bool LatingSquareAlgorithm::isLatinSquareValid(int index, const src::latin_square& latinSquare, int sideOfWholeSquare)
 {
 	//check with initial rows
 	if (latinSquare[index] == helper_->getRow(index,sideOfWholeSquare) + 1)
@@ -54,13 +57,15 @@ bool LatingSquareAlgorithm::isLatinSquareValid(int index, src::latin_square lati
 
 }
 
-void LatingSquareAlgorithm::compute(int index, src::latin_square latinSquare, int sideOfSquare)
+void LatingSquareAlgorithm::computeBacktracking(int index, src::latin_square latinSquare, int sideOfSquare, std::vector<std::vector<int>> occupiedPlaces)
 {
+	if(found){return;}
 	if (index < 0 || isLatinSquareValid(index, latinSquare, sideOfSquare))
 	{
 		if (index == latinSquare.size() - 1)
 		{
 			std::cout << toString(latinSquare, sideOfSquare);
+			found = true;
 		}
 
 		else
@@ -68,7 +73,7 @@ void LatingSquareAlgorithm::compute(int index, src::latin_square latinSquare, in
 			for (int i = 1; i <= sideOfSquare; i++)
 			{
 				latinSquare[index + 1] = i;
-				compute(index + 1, latinSquare, sideOfSquare);
+				computeBacktracking(index + 1, latinSquare, sideOfSquare, occupiedPlaces);
 			}
 		}
 	}
@@ -99,6 +104,73 @@ std::string LatingSquareAlgorithm::toString(src::latin_square latinSquare, int s
 	}
 	stream << std::endl;
 	return stream.str();
+}
+
+std::vector<std::vector<int>> LatingSquareAlgorithm::initOccupiedPlaces(int sideOfSquare)
+{
+	int size = (sideOfSquare - 1) * (sideOfSquare - 1);
+	std::vector<std::vector<int>> occupiedPlaces(size);
+
+	for (int i = 0; i < size; i++)
+	{
+		std::vector<int> pom;
+		for (int j = 1; j <= sideOfSquare; ++j)
+		{
+			if (j == helper_->getRow(i, sideOfSquare) + 1) continue;
+			if (j == helper_->getColumn(i, sideOfSquare) + 1) continue;
+			pom.push_back(j);
+		}
+		occupiedPlaces[i] = pom;
+	}
+	return occupiedPlaces;
+}
+
+void LatingSquareAlgorithm::computeForwardChecking(int index, src::latin_square latinSquare, int sideOfSquare, std::vector<std::vector<int>> occupiedPlaces)
+{
+	if(found){return;}
+	if (index < 0 || isLatinSquareValid(index, latinSquare, sideOfSquare))
+	{
+		if (index == latinSquare.size() - 1)
+		{
+			std::cout << toString(latinSquare, sideOfSquare);
+			found = true;
+		}
+
+		else
+		{
+			for (int i = 1; i <= sideOfSquare; i++)
+			{
+				for (int j = 0; j < occupiedPlaces.size(); j++)
+				{
+					auto& vec = occupiedPlaces[j];
+					if (helper_->getRow(index + 1, sideOfSquare) == helper_->getRow(j, sideOfSquare) ||
+						helper_->getColumn(index + 1, sideOfSquare) == helper_->getColumn(j, sideOfSquare))
+					{
+						vec.push_back(latinSquare[index + 1]);
+					}
+				}
+
+				auto vec = occupiedPlaces[index + 1];
+				if (std::find(vec.begin(), vec.end(), i) == vec.end())
+				{
+					continue;
+				}
+
+				for (int j = 0; j < occupiedPlaces.size(); j++)
+				{
+					auto& vec = occupiedPlaces[j];
+					if (helper_->getRow(index + 1, sideOfSquare) == helper_->getRow(j, sideOfSquare) ||
+						helper_->getColumn(index + 1, sideOfSquare) == helper_->getColumn(j, sideOfSquare))
+					{
+						vec.erase(std::remove(vec.begin(), vec.end(), i), vec.end());
+					}
+				}
+
+				latinSquare[index + 1] = i;
+				computeForwardChecking(index + 1, latinSquare, sideOfSquare, occupiedPlaces);
+			}
+		}
+	}
 }
 
 }  // namespace latin
